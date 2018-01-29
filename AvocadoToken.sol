@@ -304,8 +304,5 @@ contract MintableToken is StandardToken, Ownable {
 
 
 
-
-
-
 
 
