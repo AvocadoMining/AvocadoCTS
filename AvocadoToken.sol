@@ -1,16 +1,5 @@
 pragma solidity ^0.4.18;
 
-/**
- * @title ERC20Basic
- * @dev Simpler version of ERC20 interface
- * @dev see https://github.com/ethereum/EIPs/issues/179
- */
-contract ERC20Basic {
-  function totalSupply() public view returns (uint256);
-  function balanceOf(address who) public view returns (uint256);
-  function transfer(address to, uint256 value) public returns (bool);
-  event Transfer(address indexed from, address indexed to, uint256 value);
-}
 
 /**
  * @title SafeMath
@@ -56,6 +45,122 @@ library SafeMath {
     assert(c >= a);
     return c;
   }
+}
+
+/*
+ * @title MerkleProof
+ * @dev Merkle proof verification
+ * @note Based on https://github.com/ameensol/merkle-tree-solidity/blob/master/src/MerkleProof.sol
+ */
+library MerkleProof {
+  /*
+   * @dev Verifies a Merkle proof proving the existence of a leaf in a Merkle tree. Assumes that each pair of leaves
+   * and each pair of pre-images is sorted.
+   * @param _proof Merkle proof containing sibling hashes on the branch from the leaf to the root of the Merkle tree
+   * @param _root Merkle root
+   * @param _leaf Leaf of Merkle tree
+   */
+  function verifyProof(bytes _proof, bytes32 _root, bytes32 _leaf) public pure returns (bool) {
+    // Check if proof length is a multiple of 32
+    if (_proof.length % 32 != 0) {
+      return false;
+    }
+
+    bytes32 proofElement;
+    bytes32 computedHash = _leaf;
+
+    for (uint256 i = 32; i <= _proof.length; i += 32) {
+      assembly {
+        // Load the current element of the proof
+        proofElement := mload(add(_proof, i))
+      }
+
+      if (computedHash < proofElement) {
+        // Hash(current computed hash + current element of the proof)
+        computedHash = keccak256(computedHash, proofElement);
+      } else {
+        // Hash(current element of the proof + current computed hash)
+        computedHash = keccak256(proofElement, computedHash);
+      }
+    }
+
+    // Check if the computed hash (root) is equal to the provided root
+    return computedHash == _root;
+  }
+}
+
+
+/**
+ * @title Ownable
+ * @dev The Ownable contract has an owner address, and provides basic authorization control
+ * functions, this simplifies the implementation of "user permissions".
+ */
+contract Ownable {
+  address public owner;
+
+
+  event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+
+
+  /**
+   * @dev The Ownable constructor sets the original `owner` of the contract to the sender
+   * account.
+   */
+  function Ownable() public {
+    owner = msg.sender;
+  }
+
+  /**
+   * @dev Throws if called by any account other than the owner.
+   */
+  modifier onlyOwner() {
+    require(msg.sender == owner);
+    _;
+  }
+
+  /**
+   * @dev Allows the current owner to transfer control of the contract to a newOwner.
+   * @param newOwner The address to transfer ownership to.
+   */
+  function transferOwnership(address newOwner) public onlyOwner {
+    require(newOwner != address(0));
+    OwnershipTransferred(owner, newOwner);
+    owner = newOwner;
+  }
+
+}
+
+
+
+/**
+ * @title Contactable token
+ * @dev Basic version of a contactable contract, allowing the owner to provide a string with their
+ * contact information.
+ */
+contract Contactable is Ownable {
+
+  string public contactInformation;
+
+  /**
+    * @dev Allows the owner to set a string with their contact information.
+    * @param info The contact information to attach to the contract.
+    */
+  function setContactInformation(string info) onlyOwner public {
+    contactInformation = info;
+  }
+}
+
+
+/**
+ * @title ERC20Basic
+ * @dev Simpler version of ERC20 interface
+ * @dev see https://github.com/ethereum/EIPs/issues/179
+ */
+contract ERC20Basic is Contactable {
+  function totalSupply() public view returns (uint256);
+  function balanceOf(address who) public view returns (uint256);
+  function transfer(address to, uint256 value) public returns (bool);
+  event Transfer(address indexed from, address indexed to, uint256 value);
 }
 
 
@@ -108,7 +213,7 @@ contract BasicToken is ERC20Basic {
  * @title ERC20 interface
  * @dev see https://github.com/ethereum/EIPs/issues/20
  */
-contract ERC20 is ERC20Basic {
+contract ERC20 is BasicToken {
   function allowance(address owner, address spender) public view returns (uint256);
   function transferFrom(address from, address to, uint256 value) public returns (bool);
   function approve(address spender, uint256 value) public returns (bool);
@@ -123,7 +228,7 @@ contract ERC20 is ERC20Basic {
  * @dev https://github.com/ethereum/EIPs/issues/20
  * @dev Based on code by FirstBlood: https://github.com/Firstbloodio/token/blob/master/smart_contract/FirstBloodToken.sol
  */
-contract StandardToken is ERC20, BasicToken {
+contract StandardToken is ERC20 {
 
   mapping (address => mapping (address => uint256)) internal allowed;
 
@@ -211,59 +316,13 @@ contract StandardToken is ERC20, BasicToken {
 
 }
 
-
-
-
-/**
- * @title Ownable
- * @dev The Ownable contract has an owner address, and provides basic authorization control
- * functions, this simplifies the implementation of "user permissions".
- */
-contract Ownable {
-  address public owner;
-
-
-  event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
-
-
-  /**
-   * @dev The Ownable constructor sets the original `owner` of the contract to the sender
-   * account.
-   */
-  function Ownable() public {
-    owner = msg.sender;
-  }
-
-  /**
-   * @dev Throws if called by any account other than the owner.
-   */
-  modifier onlyOwner() {
-    require(msg.sender == owner);
-    _;
-  }
-
-  /**
-   * @dev Allows the current owner to transfer control of the contract to a newOwner.
-   * @param newOwner The address to transfer ownership to.
-   */
-  function transferOwnership(address newOwner) public onlyOwner {
-    require(newOwner != address(0));
-    OwnershipTransferred(owner, newOwner);
-    owner = newOwner;
-  }
-
-}
-
-
-
 /**
  * @title Mintable token
  * @dev Simple ERC20 Token example, with mintable token creation
  * @dev Issue: * https://github.com/OpenZeppelin/zeppelin-solidity/issues/120
  * Based on code by TokenMarketNet: https://github.com/TokenMarketNet/ico/blob/master/contracts/MintableToken.sol
  */
-
-contract MintableToken is StandardToken, Ownable {
+contract MintableToken is StandardToken {
   event Mint(address indexed to, uint256 amount);
   event MintFinished();
 
@@ -300,7 +359,146 @@ contract MintableToken is StandardToken, Ownable {
   }
 }
 
+/**
+   @title ERC827 interface, an extension of ERC20 token standard
+   Interface of a ERC827 token, following the ERC20 standard with extra
+   methods to transfer value and data and execute calls in transfers and
+   approvals.
+ */
+contract ERC827 is MintableToken {
 
+  function approve( address _spender, uint256 _value, bytes _data ) public returns (bool);
+  function transfer( address _to, uint256 _value, bytes _data ) public returns (bool);
+  function transferFrom( address _from, address _to, uint256 _value, bytes _data ) public returns (bool);
+
+}
+
+
+/**
+   @title ERC827, an extension of ERC20 token standard
+   Implementation the ERC827, following the ERC20 standard with extra
+   methods to transfer value and data and execute calls in transfers and
+   approvals.
+   Uses OpenZeppelin StandardToken.
+ */
+contract ERC827Token is ERC827 {
+
+  /**
+     @dev Addition to ERC20 token methods. It allows to
+     approve the transfer of value and execute a call with the sent data.
+     Beware that changing an allowance with this method brings the risk that
+     someone may use both the old and the new allowance by unfortunate
+     transaction ordering. One possible solution to mitigate this race condition
+     is to first reduce the spender's allowance to 0 and set the desired value
+     afterwards:
+     https://github.com/ethereum/EIPs/issues/20#issuecomment-263524729
+     @param _spender The address that will spend the funds.
+     @param _value The amount of tokens to be spent.
+     @param _data ABI-encoded contract call to call `_to` address.
+     @return true if the call function was executed successfully
+   */
+  function approve(address _spender, uint256 _value, bytes _data) public returns (bool) {
+    require(_spender != address(this));
+
+    super.approve(_spender, _value);
+
+    require(_spender.call(_data));
+
+    return true;
+  }
+
+  /**
+     @dev Addition to ERC20 token methods. Transfer tokens to a specified
+     address and execute a call with the sent data on the same transaction
+     @param _to address The address which you want to transfer to
+     @param _value uint256 the amout of tokens to be transfered
+     @param _data ABI-encoded contract call to call `_to` address.
+     @return true if the call function was executed successfully
+   */
+  function transfer(address _to, uint256 _value, bytes _data) public returns (bool) {
+    require(_to != address(this));
+
+    super.transfer(_to, _value);
+
+    require(_to.call(_data));
+    return true;
+  }
+
+  /**
+     @dev Addition to ERC20 token methods. Transfer tokens from one address to
+     another and make a contract call on the same transaction
+     @param _from The address which you want to send tokens from
+     @param _to The address which you want to transfer to
+     @param _value The amout of tokens to be transferred
+     @param _data ABI-encoded contract call to call `_to` address.
+     @return true if the call function was executed successfully
+   */
+  function transferFrom(address _from, address _to, uint256 _value, bytes _data) public returns (bool) {
+    require(_to != address(this));
+
+    super.transferFrom(_from, _to, _value);
+
+    require(_to.call(_data));
+    return true;
+  }
+
+  /**
+   * @dev Addition to StandardToken methods. Increase the amount of tokens that
+   * an owner allowed to a spender and execute a call with the sent data.
+   *
+   * approve should be called when allowed[_spender] == 0. To increment
+   * allowed value is better to use this function to avoid 2 calls (and wait until
+   * the first transaction is mined)
+   * From MonolithDAO Token.sol
+   * @param _spender The address which will spend the funds.
+   * @param _addedValue The amount of tokens to increase the allowance by.
+   * @param _data ABI-encoded contract call to call `_spender` address.
+   */
+  function increaseApproval(address _spender, uint _addedValue, bytes _data) public returns (bool) {
+    require(_spender != address(this));
+
+    super.increaseApproval(_spender, _addedValue);
+
+    require(_spender.call(_data));
+
+    return true;
+  }
+
+  /**
+   * @dev Addition to StandardToken methods. Decrease the amount of tokens that
+   * an owner allowed to a spender and execute a call with the sent data.
+   *
+   * approve should be called when allowed[_spender] == 0. To decrement
+   * allowed value is better to use this function to avoid 2 calls (and wait until
+   * the first transaction is mined)
+   * From MonolithDAO Token.sol
+   * @param _spender The address which will spend the funds.
+   * @param _subtractedValue The amount of tokens to decrease the allowance by.
+   * @param _data ABI-encoded contract call to call `_spender` address.
+   */
+  function decreaseApproval(address _spender, uint _subtractedValue, bytes _data) public returns (bool) {
+    require(_spender != address(this));
+
+    super.decreaseApproval(_spender, _subtractedValue);
+
+    require(_spender.call(_data));
+
+    return true;
+  }
+
+}
+
+contract DetailedERC827Token is ERC827Token {
+  string public name;
+  string public symbol;
+  uint8 public decimals;
+
+  function DetailedERC827Token(string _name, string _symbol, uint8 _decimals) public {
+    name = _name;
+    symbol = _symbol;
+    decimals = _decimals;
+  }
+}
 
 
 
