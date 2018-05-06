@@ -1,4 +1,4 @@
-pragma solidity ^0.4.19;
+pragma solidity ^0.4.21;
 
 /**
  * @title Helps contracts guard agains reentrancy attacks.
@@ -545,18 +545,17 @@ contract ERC827Token is ERC827 {
 
 }
 
-contract DetailedERC827 is ERC827Token {
+contract AvocadoERC827 is ERC827Token {
   string public name;
   string public symbol;
   uint8 public decimals;
 
-  function DetailedERC827(string _name, string _symbol, uint8 _decimals) public {
+  function AvocadoERC827(string _name, string _symbol, uint8 _decimals) public {
     name = _name;
     symbol = _symbol;
     decimals = _decimals;
   }
 }
-
 
 
 
