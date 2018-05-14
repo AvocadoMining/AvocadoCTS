@@ -1,4 +1,4 @@
-pragma solidity ^0.4.21;
+pragma solidity ^0.4.0;
 
 /**
  * @title Helps contracts guard agains reentrancy attacks.
@@ -167,7 +167,7 @@ contract Ownable {
  */
 contract Contactable is Ownable {
 
-  string public contactInformation;
+  string public contactInformation = "Avocado by Avocado Mining. To contact us please visit https://www.avocadomining.com";
 
   /**
     * @dev Allows the owner to set a string with their contact information.
@@ -546,11 +546,11 @@ contract ERC827Token is ERC827 {
 }
 
 contract AvocadoERC827 is ERC827Token {
-  string public name;
-  string public symbol;
-  uint8 public decimals;
+  string public name = "Avocado";
+  string public symbol = "AVD";
+  uint8 public decimals = 18;
 
-  function AvocadoERC827(string _name, string _symbol, uint8 _decimals) public {
+  function AvocadoERC827ERC827(string _name, string _symbol, uint8 _decimals) public {
     name = _name;
     symbol = _symbol;
     decimals = _decimals;
